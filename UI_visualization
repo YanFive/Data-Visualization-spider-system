@@ -1,0 +1,196 @@
+# -*- coding: utf-8 -*-
+
+# Form implementation generated from reading ui file 'window.ui'
+#
+# Created by: PyQt5 UI code generator 5.13.0
+#
+# WARNING! All changes made in this file will be lost!
+import os
+import cv2
+import sys
+import pymongo
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
+from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
+
+def message(Title, Text):
+    message = QMessageBox()
+    message.addButton(QPushButton('确定'), QMessageBox.YesRole)
+    message.setWindowTitle(Title)
+    message.setText(Text)
+    message.exec_()
+
+class Ui_Form(object):
+    def setupUi(self, Form):
+        Form.setObjectName("Form")
+        Form.resize(685, 679)
+        # 选择控件，控制绘图
+        self.radiobutton = QtWidgets.QRadioButton(Form)
+        self.radiobutton.setGeometry(QtCore.QRect(30, 30, 61, 41))
+        # 清除和确定按钮
+        self.pushButton = QtWidgets.QPushButton(Form)
+        self.pushButton.setGeometry(QtCore.QRect(500, 30, 81, 41))
+        font = QtGui.QFont()
+        font.setPointSize(15)
+        self.pushButton.setFont(font)
+        self.pushButton.setObjectName("pushButton")
+        self.pushButton2 = QtWidgets.QPushButton(Form)
+        self.pushButton2.setGeometry(QtCore.QRect(590, 30, 81, 41))
+        font = QtGui.QFont()
+        font.setPointSize(15)
+        self.pushButton2.setFont(font)
+        self.pushButton2.setObjectName("pushButton2")
+        # label控件
+        self.label_1 = QtWidgets.QLabel(Form)
+        self.label_1.setGeometry(QtCore.QRect(70, 30, 61, 41))
+        font = QtGui.QFont()
+        font.setPointSize(15)
+        self.label_1.setFont(font)
+        self.label_1.setObjectName("label_1")
+        self.label_2 = QtWidgets.QLabel(Form)
+        self.label_2.setGeometry(QtCore.QRect(310, 30, 61, 41))
+        font = QtGui.QFont()
+        font.setPointSize(15)
+        self.label_2.setFont(font)
+        self.label_2.setObjectName("label_2")
+        # textedit存放输入以及输出
+        self.textEdit_1 = QtWidgets.QTextEdit(Form)
+        self.textEdit_1.setGeometry(QtCore.QRect(130, 30, 151, 41))
+        self.textEdit_1.setObjectName("textEdit_1")
+        self.textEdit_1.setFont(QtGui.QFont("", 15))
+        self.textEdit_2 = QtWidgets.QTextEdit(Form)
+        self.textEdit_2.setGeometry(QtCore.QRect(370, 30, 121, 41))
+        self.textEdit_2.setObjectName("textEdit_2")
+        self.textEdit_2.setFont(QtGui.QFont("", 15))
+        self.textEdit_3 = QtWidgets.QTextEdit(Form)
+        self.textEdit_3.setGeometry(QtCore.QRect(10, 520, 661, 151))
+        self.textEdit_3.setObjectName("textEdit_3")
+        self.textEdit_3.setFont(QtGui.QFont("", 12))
+        # 显示绘制的折线图
+        self.graphicsView = QtWidgets.QGraphicsView(Form)
+        self.graphicsView.setGeometry(QtCore.QRect(10, 90, 661, 421))
+        self.graphicsView.setObjectName("graphicsView")
+        # 声明 清除和确定按钮连接后续函数
+        self.retranslateUi(Form)
+        QtCore.QMetaObject.connectSlotsByName(Form)
+        self.pushButton.clicked.connect(self.start)
+        self.pushButton2.clicked.connect(self.clear)
+
+    def retranslateUi(self, Form):
+        _translate = QtCore.QCoreApplication.translate
+        Form.setWindowTitle(_translate("Form", "数据可视化"))
+        self.pushButton.setText(_translate("Form", "确认"))
+        self.pushButton2.setText(_translate("Form", "清除"))
+        self.label_1.setText(_translate("Form", "简称"))
+        self.label_2.setText(_translate("Form", "指数"))
+
+    # 定义清除按钮点击响应
+    def clear(self):
+        if self.textEdit_3.toPlainText() == "":
+            message('警告', '无可清除内容！')
+        else:
+            self.textEdit_3.setText("")
+            self.graphicsView.setScene(None)
+            self.path = "F:/BKCX/Graduationdesign/Design/Design/plot/zs.jpg"
+            os.remove(self.path)
+
+    # 定义确定按钮点击响应
+    def start(self):
+        #messageBox = QMessageBox()
+        if self.textEdit_1.toPlainText() == "" or self.textEdit_2.toPlainText() == "":
+            message('警告', '输入不能为空！请重新输入！')
+        else:
+            # 连接数据库，获取数据
+            self.client = pymongo.MongoClient(host="localhost", port=27017)
+            self.db = self.client.zhishu
+            self.item = self.db.Data
+            self.list_name1 = []
+            self.list_name2 = ['ROE', '盈利收益率', '股息率', 'PE(TTM)', '百分位']
+            self.jc = self.textEdit_1.toPlainText()
+            self.zs = self.textEdit_2.toPlainText()
+            for self.i in self.item.find():
+                self.list_name1.append(self.i["简称"])
+            if self.textEdit_1.toPlainText() not in self.list_name1:
+                message('警告', '无效输入！请重新输入！')
+            if self.textEdit_2.toPlainText() not in self.list_name2:
+                message('警告', '无效输入！请重新输入！')
+            else:
+                # 两个list存放获取数据和对应日期
+                self.list_para = []
+                self.list_time = []
+                for self.word in self.item.find({'简称': self.jc}):
+                    self.list_para.append(self.word[self.zs])
+                    self.list_time.append(self.word['时间'])
+                # 将list中字符串类型转换为浮点类型
+                self.list_para2 = list(map(float, self.list_para))
+                #print(self.list_para)
+                # 将list转换为字符串类型并在textedit3中显示
+                self.str_para = '        '.join(self.list_para)
+                self.textEdit_3.setPlainText(self.str_para)
+                # 设定绘图x，y坐标数据
+                self.x = self.list_time
+                self.y = self.list_para2
+                if self.radiobutton.isChecked():
+                    plt.figure()
+                    plt.xlabel("日期")
+                    plt.ylabel(self.zs)
+                    plt.plot(self.x, self.y, marker="*", label=self.jc)
+                    # 设定x轴表示，每四个
+                    plt.xticks(self.x[::4])
+                    #plt.yticks()
+                    # 设置标签在右上角
+                    plt.legend(loc='upper right')
+                    # 显示中文标签
+                    plt.rcParams['font.sans-serif'] = ['SimHei']
+                    plt.rcParams['axes.unicode_minus'] = False
+                    # 显示网格
+                    plt.grid(color="k", linestyle=":")
+                    plt.savefig("F:/BKCX/Graduationdesign/Design/Design/plot/zs.jpg")
+                    self.img = cv2.imread("F:/BKCX/Graduationdesign/Design/Design/plot/zs.jpg")
+                    # 获取原图大小
+                    self.w = self.img.shape[1]
+                    self.h = self.img.shape[0]
+                    # 图片缩放尺寸
+                    self.zoomscale = 1
+                    # 转换图片格式，在graphicsview中显示
+                    self.frame = QImage(self.img, self.w, self.h, QImage.Format_RGB888)
+                    self.pix = QPixmap.fromImage(self.frame)
+                    self.item = QGraphicsPixmapItem(self.pix)
+                    self.scene = QGraphicsScene()
+                    self.scene.addItem(self.item)
+                    self.graphicsView.setScene(self.scene)
+                else:
+                    plt.xlabel("日期")
+                    plt.ylabel(self.zs)
+                    plt.plot(self.x, self.y, marker="*", label=self.jc)
+                    plt.xticks(self.x[::4])
+                    # plt.yticks()
+                    plt.legend(loc='upper right')
+                    plt.rcParams['font.sans-serif'] = ['SimHei']  # 显示中文标签
+                    plt.rcParams['axes.unicode_minus'] = False
+                    plt.grid(color="k", linestyle=":")
+                    plt.savefig("F:/BKCX/Graduationdesign/Design/Design/plot/zs.jpg")
+                    # self.list_para.clear()
+                    self.img = cv2.imread("F:/BKCX/Graduationdesign/Design/Design/plot/zs.jpg")
+                    # self.img = cv2.cvtColor(self.img, cv2.COLOR_BRG2RGB)
+                    self.w = self.img.shape[1]
+                    self.h = self.img.shape[0]
+                    self.zoomscale = 1
+                    self.frame = QImage(self.img, self.w, self.h, QImage.Format_RGB888)
+                    self.pix = QPixmap.fromImage(self.frame)
+                    self.item = QGraphicsPixmapItem(self.pix)
+                    self.scene = QGraphicsScene()
+                    self.scene.addItem(self.item)
+                    self.graphicsView.setScene(self.scene)
+
+if __name__ == '__main__':
+    app = QtWidgets.QApplication(sys.argv)
+    window = QtWidgets.QMainWindow()
+    ui = Ui_Form()
+    ui.setupUi(window)
+    window.show()
+    sys.exit(app.exec_())
