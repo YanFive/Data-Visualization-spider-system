@@ -1,0 +1,113 @@
+"""1、xls文件转换为xlsx文件；
+2、数据清洗、筛选
+3、所有数据整合成Data.xlsx表"""
+import os
+import csv
+import pymongo
+import openpyxl
+import pandas as pd
+from openpyxl.styles import Alignment, numbers, Font
+
+# xls文件转换为xlsx文件
+def xls_to_xlsx():
+    xls_path = "F:/BKCX/Graduationdesign/Design/Design/xls"
+    xlsx_path = "F:/BKCX/Graduationdesign/Design/Design/xlsx"
+    files = os.listdir(xls_path)
+    for file in files:
+        # 对路径进行分割，分别为文件路径和文件后缀
+        vname, kname = os.path.splitext(file)
+        if kname == '.xls':
+            print('正在对{}文件进行转换...'.format(file))
+            # 读取xls文件
+            data = pd.DataFrame(pd.read_excel(xls_path + '\\' + file))
+            # 格式转换
+            data.to_excel(xlsx_path + '\\' + vname + '.xlsx', index=False)
+
+# 数据筛选清洗
+def cleaner():
+    xlsx_path = "F:/BKCX/Graduationdesign/Design/Design/xlsx"
+    for xlsx in os.listdir(xlsx_path):
+        # 当天日期
+        time = xlsx[0:1] + '-' + xlsx[2:4]
+        print(time)
+        # 打开工作簿
+        workbook = openpyxl.load_workbook('F:/BKCX/Graduationdesign/Design/Design/xlsx/' + xlsx)
+        # 获取工作表
+        worksheet = workbook["Sheet1"]
+        # 删除无用数据
+        for i in range(1, 2):
+            worksheet.delete_cols(i)
+        worksheet.delete_cols(2)
+        for j in range(1, 4):
+            worksheet.delete_rows(21)
+        # 设置第一行标题
+        title = ['简称', 'ROE', '盈利收益率', '股息率', 'PE(TTM)', '百分位', '时间']
+        for i in range(0, 7):
+            worksheet.cell(1, 1 + i, title[i])
+        # 设置第一列标题
+        name = ['上证180', '上证50', '沪深300', '中证1000', '中证500', '深证成指', '中小板指', '创业板指', '深证100', '香港恒生指数', '恒生中国企业指数',
+                '标准普尔500', '纳斯达克100', '300医药', '中证医药', '医药100', '全指医药', '中证医疗', '中证主要消费']
+        for x in range(0, 19):
+            worksheet.cell(2 + x, 1, name[x])
+        # 插入时间
+        for t in range(0, 19):
+            worksheet.cell(2 + t, 7, time)
+        # 百分比表示
+        for rows in list(worksheet.rows):
+            for cell in rows[1:4]:
+                cell.number_format = numbers.FORMAT_PERCENTAGE_00
+        for rows in list(worksheet.rows):
+            for cell in rows[5:6]:
+                cell.number_format = numbers.FORMAT_PERCENTAGE_00
+        # float小数点两位
+        for rows in list(worksheet.rows):
+            for cell in rows[4:5]:
+                cell.number_format = numbers.FORMAT_NUMBER_00
+        # 保存
+        workbook.save('F:/BKCX/Graduationdesign/Design/Design/FinalData/' + xlsx)
+
+def to_float():
+    filepath = "F:/BKCX/Graduationdesign/Design/Design/FinalData"
+    for files in os.listdir(filepath):
+        #print(files)
+        df = pd.DataFrame(pd.read_excel('F:/BKCX/Graduationdesign/Design/Design/FinalData/' + files))
+        ROE_float = df['ROE'].str.strip('%').astype(float) / 100
+        yl_float = df['盈利收益率'].str.strip('%').astype(float) / 100
+        gxl_float = df['股息率'].str.strip('%').astype(float) / 100
+        df['ROE'] = ROE_float
+        df['盈利收益率'] = yl_float
+        df['股息率'] = gxl_float
+        df.to_excel('F:/BKCX/Graduationdesign/Design/Design/FinalData/' + files, index=False)
+
+# 数据合并
+def merge():
+    dirs = "F:/BKCX/Graduationdesign/Design/Design/FinalData"  # 工作路径
+    frames = []
+    for root, dirs, files in os.walk(dirs):
+        for file in files:
+            df = pd.read_excel(os.path.join(root, file))
+            frames.append(df)
+    result = pd.concat(frames)
+    result.to_excel("F:/BKCX/Graduationdesign/Design/Design/Data.xlsx", index=False, encoding="utf_8_sig")
+
+
+def xlsx_to_csv():
+    data = pd.DataFrame(pd.read_excel("F:/BKCX/Graduationdesign/Design/Design/Data.xlsx", index_col=0))
+    data.to_csv("F:/BKCX/Graduationdesign/Design/Design/Data.csv", encoding='utf-8-sig')
+
+# 连接数据库，导入数据
+def connection():
+    Client = pymongo.MongoClient(host="localhost", port=27017)
+    db = Client.zhishu
+    coon = db.Data
+    with open('F:/BKCX/Graduationdesign/Design/Design/Data.csv', 'r', encoding='utf-8-sig') as f:
+        reader = csv.DictReader(f)
+        coon.insert_many(reader)
+
+if __name__ == "__main__":
+    xls_to_xlsx()
+    cleaner()
+    to_float()
+    merge()
+    xlsx_to_csv()
+    connection()
