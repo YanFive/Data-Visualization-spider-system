@@ -1,0 +1,69 @@
+import mpl_finance as mpf
+import numpy as np
+import pandas as pd
+from matplotlib.pylab import date2num
+import tushare as ts
+from datetime import datetime
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+def getdata():
+    cs = input()
+    data = ts.get_hist_data(cs, start='2020-01-01', end='2020-05-01')
+    data = data.sort_index()
+    data.to_csv('hist_data.csv')
+
+def kline(): # 绘制K线图
+    data = pd.read_csv('hist_data.csv',
+                       usecols=['date', 'open', 'close', 'high', 'low', 'volume', 'ma5', 'ma10', 'ma20'])
+    # 按时间升序排列数据
+    data.sort_values(by='date', ascending=True, inplace=True)
+    data = data[['date', 'open', 'close', 'high', 'low', 'volume', 'ma5', 'ma10', 'ma20']]
+    data.date = pd.to_datetime(data.date)
+    # 将date转化为特定的时间戳数据
+    data.date = data.date.apply(lambda x: date2num(x))
+    # 将 DataFrame 转为 matrix格式
+    data_mat = data.as_matrix()
+
+    # 绘制图片
+    fig, ax = plt.subplots(figsize=(7, 5))
+    mpf.candlestick_ochl(ax, data_mat, colordown='#53c156', colorup='#ff1717', width=0.8)
+    plt.plot(data_mat[:, 0], data_mat[:, 6], color='y', label='ma5')
+    plt.legend(loc='upper right')
+    plt.plot(data_mat[:, 0], data_mat[:, 7], color='r', label='ma10')
+    plt.legend(loc='upper right')
+    plt.plot(data_mat[:, 0], data_mat[:, 8], color='k', label='ma20')
+    plt.legend(loc='upper right')
+    ax.xaxis_date()
+    ax.grid(color="k", linestyle=":")
+    plt.xticks(rotation=12)
+    plt.rcParams['font.sans-serif'] = ['SimHei']  # 显示中文标签
+    plt.rcParams['axes.unicode_minus'] = False
+    plt.title('000016上证50 K线图')
+    plt.xlabel('日期')
+    plt.ylabel('价格')
+    plt.savefig('kline.jpg')
+
+    fig, ax = plt.subplots(figsize=(7, 5))
+    mpf.plot_day_summary_oclh(ax, data_mat, colorup='g', colordown='r')
+    plt.grid(True)
+    ax.xaxis_date()
+    plt.xticks(rotation=12)
+    plt.title('000016上证50 每日摘要')
+    plt.ylabel('价格')
+    plt.savefig('每日摘要')
+
+    fig, ax = plt.subplots(figsize=(7, 5))
+    plt.bar(data_mat[:, 0], data_mat[:, 5], width=0.5)
+    ax.xaxis_date()
+    ax.set_ylabel('成交量')
+    plt.xticks(rotation=12)
+    ax.grid(True)
+    plt.title('000016上证50 成交量柱状图')
+    plt.savefig('成交量')
+
+def volumeline(): # 绘制成交量
+    pass
+
+if __name__ == "__main__":
+    getdata()
+    kline()
